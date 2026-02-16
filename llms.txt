@@ -1,0 +1,28 @@
+# Aubrey Clark
+
+> Machine learning engineer. PhD Economics, Harvard (2017).
+
+## About
+
+Aubrey Clark builds machine learning systems and studies economics. Currently Staff Data Scientist & Technical Lead Manager at Google, Global Infrastructure. Previously: Twitter (ML/Performance), Wealthfront (automated financial advisory), University of Cambridge (Lecturer: Information Economics, Mechanism Design).
+
+## Projects
+
+- [Communication Systems from Scratch](https://github.com/abclark/communication_systems): Built the internet protocol stack from first principles — TCP/IP, QUIC, HTTP/3, Protocol Buffers, BGP, BBR congestion control, and an audio modem that transmits TCP packets as sound through air.
+- [Probabilistic Serial Mechanism](https://github.com/abclark/probabilistic_serial_mechanism): Fair allocation algorithm. pip installable.
+- [Constrained Birkhoff-von Neumann](https://github.com/abclark/constrained_birkhoff_von_neumann): Implementation of Budish-Che-Kojima-Milgrom (2013) algorithm for constrained random assignment.
+- [Cycle Finder](https://github.com/abclark/cycle_finder): Monien (1985) path-finding algorithm.
+
+## Research
+
+- [Google Scholar](https://scholar.google.com/citations?user=JEBueQ8AAAAJ)
+- Dissertation: "Dynamic Allocation, Selection, and Hypothesis-Testing" (Harvard, 2017). Committee chair: Eric Maskin.
+
+## Code
+
+- [GitHub](https://github.com/abclark)
+
+## Contact
+
+- Nostr: npub1t6gu5asl2636txpyeuqnwac8y7zc5035mjae2qdjq48z6q8p0mhqteajea
+- Web: https://aubrey-clark.com
