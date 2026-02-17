@@ -4,62 +4,51 @@
 <body>
 <h2><a href="/">Aubrey Clark</a></h2>
 <h3>Financial Planning in the AI Era</h3>
-<p><em>A week of teaching an AI to manage my money.</em></p>
-<p>I spent three years at Wealthfront building a <a href="https://www.ryantolsma.com/thoughts/2021/10/25/nested-benders.html">robo-advisor</a> — a stochastic optimization engine that planned 250,000 users' financial lives over quarterly decision periods with branching scenarios for stock returns and bond rates. We modeled every account type, every tax rule, every contribution limit. It was a serious piece of engineering.</p>
-<p>Five years later, I spent a week replacing the idea with an AI, a Raspberry Pi, and a folder of bank statements. No app. No platform. This is what happened.</p>
+<p><em>Log of a week spent teaching an AI to manage my money.</em></p>
+<p>Background: I spent three years at Wealthfront building a <a href="https://www.ryantolsma.com/thoughts/2021/10/25/nested-benders.html">robo-advisor</a> — a stochastic optimization engine that planned 250,000 users' financial lives. We modeled every account type, tax rule, and contribution limit. Five years later I tried replacing the idea with an AI and a folder of bank statements.</p>
 
-<h4>Day 1 — Tuesday, February 11</h4>
-<p>I set up an AI assistant on a Raspberry Pi. It could read my email, check my calendar, and manage a grocery list on Google Sheets. Useful, but not interesting.</p>
-<p>What I wanted was harder. I wanted it to understand my entire financial life — every account, every paycheck, every tax return — and tell me what to do. Not in the vague way financial advisors talk. In the precise way an economist would.</p>
+<h4>Feb 11</h4>
+<p>Set up an AI assistant on a Raspberry Pi. Email, calendar, grocery list. The plumbing. What I actually wanted: feed it every account, every paycheck, every tax return, and have it tell me what to do.</p>
 
-<h4>Day 2 — Wednesday, February 12</h4>
-<p>I gave it access to my message history. 50,000 WhatsApp messages and 4,500 iMessages, exported from SQLite databases. It learned who my friends are, what I care about, how I talk. Context.</p>
-<p>This wasn't about finance yet. It was about building a machine that knows me well enough to give advice I'd actually take.</p>
+<h4>Feb 12</h4>
+<p>Exported 50,000 WhatsApp messages and 4,500 iMessages from SQLite. Not about finance — about building enough context that the advice would be personal, not generic.</p>
 
-<h4>Day 3 — Thursday, February 13</h4>
-<p>The financial data went in. A private GitHub repo with CSVs from every institution: Vanguard, Schwab, Chase, Capital One, Venmo. Portfolio positions, transaction histories, RSU vesting schedules. The AI parsed all of it and built a unified picture.</p>
-<p>First finding: my net worth was about $1.6 million including unvested stock. I had 70% of my liquid assets in three tech stocks. I was contributing to a 529 plan at a rate that assumed children I don't have. The AI said what any good advisor would say: diversify, slow down the 529, and plan the Wealthfront option exercise before the lockup ends in June.</p>
-<p>I also connected a Wahoo bike computer, set up automated repo syncing, and built a cron job to update portfolio prices every Friday. The plumbing.</p>
+<h4>Feb 13</h4>
+<p>Financial data went in. Private GitHub repo with CSVs from Vanguard, Schwab, Chase, Capital One, Venmo. Portfolio positions, transaction histories, RSU vesting schedules.</p>
+<p>First pass: net worth ~$1.6M including unvested stock. 70% of liquid assets in three tech stocks. Contributing to a 529 at a rate that assumes children I don't have. Connected a Wahoo bike computer. Set up cron jobs to sync repos daily and update prices weekly.</p>
 
-<h4>Day 4 — Friday, February 14</h4>
-<p>Valentine's Day. I drove to Tahoe with my girlfriend and dog. In the car, I had the AI audit my public profile — what the internet knows about me. It found my 2007 election candidacy in Australia (455 votes, age 20), my Harvard dissertation committee, and a ZoomInfo profile with my work email. I started a cleanup project.</p>
-<p>I also asked it to help me look for jobs. I'm a staff data scientist at Google. I wanted to see what AI labs are hiring. It built a dossier: target companies, outreach drafts, interview prep. All in files, nothing sent. The rule: no external contact without explicit approval.</p>
+<h4>Feb 14</h4>
+<p>Drove to Tahoe. In the car, had the AI audit my public profile. It found my 2007 Australian election candidacy (455 votes, age 20), my Harvard dissertation committee, and a ZoomInfo profile with my work email. Started a cleanup.</p>
+<p>Also had it draft job search materials — target companies, outreach templates, interview prep. All in files, nothing sent.</p>
 
-<h4>Day 5 — Saturday, February 15</h4>
-<p>Backcountry skiing near Donner Summit with the dog. Between runs, I tested voice input — dictating to the AI through Telegram while standing in snow. It worked.</p>
-<p>We talked about what you can truly own. Code, writing, identity — those you can self-custody. Securities and property require institutions. That's the social contract, not a bug to fix. I started outlining a blog post called "Internet Reclaimed."</p>
-<p>I also had it add 21 birthdays to my Google Calendar. The kind of task that takes a human thirty minutes and a machine thirty seconds.</p>
+<h4>Feb 15</h4>
+<p>Backcountry skiing near Donner Summit. Tested voice dictation to the AI through Telegram while standing in snow. Worked. Added 21 birthdays to Google Calendar.</p>
 
-<h4>Day 6 — Sunday, February 16</h4>
-<p>The real work started. I forwarded internal Google documents — retirement planning guides, compensation letters, W-2s, tax returns, Social Security statements. The AI extracted every line item using OCR and built a three-section financial dashboard: Spending, Income, and Wealth.</p>
-<p>Key discoveries:</p>
+<h4>Feb 16</h4>
+<p>Forwarded compensation letters, W-2s, tax returns, Social Security statement. The AI extracted every line item and built a dashboard.</p>
+<p>Findings:</p>
 <ul>
-<li>My 401k was 56% Roth and 37% pre-tax. I had been making the wrong election for years.</li>
-<li>I had $10,429 stuck in an after-tax 401k bucket that should have been converted to a Roth IRA months ago.</li>
-<li>My W-4 was set to basic Single with $0 additional withholding. With $200k in RSU income taxed at a 22% supplemental rate against a 35% marginal rate, I was under-withheld by about $15,000 every year. This explained why I owed money every April.</li>
-<li>I was paying $562 in credit card interest over two years — not because I was broke, but because my 401k contributions were front-loaded, creating a cash crunch in winter months.</li>
-<li>Google offers free Goldman Sachs financial consulting (go/ayco), $1,200/year in education reimbursement, and $17/month ClassPass. I had claimed none of it.</li>
+<li>401k was 56% Roth, 37% pre-tax. Wrong election for years.</li>
+<li>$10,429 stuck in after-tax 401k — should have been converted to Roth IRA months ago.</li>
+<li>W-4 set to Single/$0 additional. RSU income withheld at 22% against a 35% marginal rate. Under-withheld ~$15,000/year. Explained the April surprise every year.</li>
+<li>$562 in credit card interest over two years. Not broke — 401k contributions are front-loaded, creating a winter cash crunch.</li>
+<li>Unclaimed employer perks: free Goldman Sachs financial consulting, $1,200/year education reimbursement, $17/month ClassPass.</li>
 </ul>
 
-<h4>Day 7 — Monday, February 17</h4>
-<p>I sat down to settle the pre-tax versus Roth question once and for all.</p>
-<p>The entire debate reduces to one inequality. You have a dollar of pre-tax income. You can pay tax now at rate τ<sub>n</sub> and invest the remainder (Roth), or invest the full dollar and pay tax at rate τ<sub>f</sub> when you withdraw (pre-tax). The growth is identical on both sides. It cancels. Pre-tax wins if and only if τ<sub>n</sub> > τ<sub>f</sub>.</p>
-<p>Returns don't matter. Inflation doesn't matter. Time horizon doesn't matter. One inequality.</p>
-<p>My τ<sub>n</sub> is 46.65% — the 35% federal bracket plus 9.3% California plus 2.35% Medicare surcharge. To find τ<sub>f</sub>, I projected my pre-tax balance to age 75 using real returns, added Social Security, subtracted the standard deduction, and applied today's tax brackets. This works exactly, not approximately, because brackets are inflation-indexed.</p>
-<p>The answer: my retirement income lands in the 12% federal bracket. τ<sub>f</sub> ≈ 16% with California, 12% without. The gap is 30 percentage points. Every dollar in pre-tax keeps 84 cents. Every dollar in Roth keeps 53 cents.</p>
-<p>I then asked: at what balance does the decision flip? When does τ<sub>f</sub> catch up to τ<sub>n</sub>? The answer is a $3.1 million pre-tax balance. But the IRS caps contributions at $24,500 per year. Maxing that for 28 years at 4.5% real return produces $1.6 million — half the crossover. The contribution limit makes it mathematically impossible to save enough pre-tax to make Roth the better choice.</p>
-<p>I wrote this up as Chapter 5 of a document called <a href="https://github.com/abclark/open-plan">OPEN_PLAN.md</a>.</p>
-
-<p>That afternoon, I connected Chase to Plaid — the bank that had blocked every previous attempt. Four credit cards came through. I built a script that checks my cash balances against upcoming auto-pay dates and alerts me if a payment will bounce. It found that my Vanguard Cash Plus account had $1,413 and a credit card payment due in six days. Not a crisis this time. But exactly the kind of near-miss that had cost me $562 in interest before.</p>
-
-<h4>What I learned</h4>
-<p>The financial planning industry sells complexity. Tax-advantaged accounts, contribution limits, Required Minimum Distributions, bracket indexing, employer matches, backdoor conversions — the vocabulary alone is enough to make most people give up and hire someone.</p>
-<p>But the math is simple. The hard part is gathering the data and doing the arithmetic honestly. An AI can do both, if you give it the right document.</p>
-<p><a href="https://github.com/abclark/open-plan">Open Plan</a> is that document. One markdown file. No app, no subscription, no platform. Give it to any AI along with your financial data. It will tell you what your money is doing and what you should do next.</p>
-<p>The repo is private while I clean it up. It will be public soon.</p>
+<h4>Feb 17</h4>
+<p>Settled pre-tax vs Roth. The whole debate is one inequality.</p>
+<p>You have $1 of pre-tax income. Two options:</p>
+<ul>
+<li>Pre-tax: $1 × (1+r)<sup>n</sup> × (1 − τ<sub>f</sub>)</li>
+<li>Roth: $1 × (1 − τ<sub>n</sub>) × (1+r)<sup>n</sup></li>
+</ul>
+<p>Growth cancels. Pre-tax wins iff τ<sub>n</sub> > τ<sub>f</sub>. Returns, inflation, time horizon — all irrelevant.</p>
+<p>My τ<sub>n</sub> = 46.65%. To find τ<sub>f</sub>: project the pre-tax balance at real return, add Social Security, subtract standard deduction, apply today's brackets. Works exactly because brackets are inflation-indexed. My retirement income lands in the 12% bracket. Gap is 30 points.</p>
+<p>Crossover: need $3.1M in pre-tax to make Roth competitive. IRS caps contributions at $24,500/year. Max that for 28 years and you get $1.6M. Half the crossover. The cap makes it impossible to overshoot.</p>
+<p>Connected Chase to Plaid — it had blocked every previous attempt. Built a cash-flow monitor that checks balances against upcoming auto-pay dates and alerts me before a payment bounces.</p>
 
 <p>—</p>
-<p><em>February 17, 2026</em></p>
+<p><em>Ongoing. Last updated February 17, 2026.</em></p>
 <p><a href="/">← Home</a></p>
 </body>
 </html>
