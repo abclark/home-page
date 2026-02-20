@@ -6,75 +6,85 @@
 <p><em>🤖 AI-assisted draft — February 20, 2026</em></p>
 <hr>
 
-<h2>Open Plan: One Folder That Turns Any AI Into Your Financial Planner</h2>
+<h2>Open Plan</h2>
 
-<p>Most people know they should "get their finances in order" but don't know where to start. The tools that exist are either too simple (budget apps that track spending but don't tell you what to do) or too complex (financial advisors who charge 1% of assets to rebalance a portfolio). The middle ground, a system that actually diagnoses your situation and tells you what to fix, doesn't exist as software.</p>
+<p>Most people know they should get their finances in order. Most don't know where to start. Budget trackers track spending but give no guidance. Financial services manage portfolios for high fees. The practical middle ground doesn't exist as software.</p>
 
-<p>So I built it as a set of text files.</p>
+<p>So I built one as a set of text files.</p>
 
 <h3>What it is</h3>
 
-<p>Open Plan is a folder of markdown files. Copy it into any AI chat (Claude, ChatGPT, Gemini, a local model) and say "help me with my finances." The AI reads a router that tells it how to assess your situation, picks the right analysis module, and walks you through it.</p>
+<p>Open Plan is a folder of markdown files. Copy it into any AI chat (Claude, ChatGPT, Gemini, or a local model) and say "help me with my finances." The AI reads a router file, asks intake questions, picks the right module, and walks you through it.</p>
 
-<p>No app. No account. No subscription. No server. Your data never leaves your computer.</p>
+<p>No app. No account. No subscription. No server.</p>
+
+<h3>How to use</h3>
+
+<ol>
+<li>Clone the repo from <a href="https://github.com/abclark/open-plan">github.com/abclark/open-plan</a>.</li>
+<li>Copy the folder into your AI chat.</li>
+<li>Say: "help me with my finances."</li>
+</ol>
 
 <h3>How it works</h3>
 
-<p>The system has three layers:</p>
+<p>Open Plan has three layers.</p>
 
-<p><strong>1. A router</strong> that the AI reads at the start of every session. It contains intake questions, a decision tree for which module to load next, rules for tone and privacy, and state management via a local JSON file. The router is the brain.</p>
+<p><strong>1. A router</strong> the AI reads at the start of every session. It asks intake questions, follows a decision tree to pick the next module, sets tone and privacy rules, and tracks state in a local JSON file.</p>
 
-<p><strong>2. Eighteen modules</strong> organized into five phases:</p>
+<p><strong>2. Eighteen modules</strong> across five phases:</p>
 
 <ul>
-<li><strong>Audit</strong> — spending analysis, income breakdown, net worth calculation</li>
-<li><strong>Fix</strong> — emergency fund, debt payoff, tax withholding gaps, unclaimed benefits</li>
-<li><strong>Optimize</strong> — pre-tax vs Roth, mega backdoor, portfolio concentration, equity compensation</li>
-<li><strong>Plan</strong> — goal quantification, savings waterfall, 529 strategy</li>
-<li><strong>Act</strong> — ranked action items with dollar impact per hour of effort</li>
+<li><strong>Audit:</strong> spending analysis, income breakdown, net worth calculation.</li>
+<li><strong>Fix:</strong> emergency fund, debt payoff, tax withholding gaps, unclaimed benefits.</li>
+<li><strong>Optimize:</strong> pre-tax vs Roth, mega backdoor, portfolio concentration, equity compensation.</li>
+<li><strong>Plan:</strong> goal quantification, savings waterfall, 529 strategy.</li>
+<li><strong>Act:</strong> ranked action items with estimated dollar impact per hour of effort.</li>
 </ul>
 
-<p><strong>3. A data ladder</strong> that progressively unlocks deeper analysis as you share more information. Level 0 is conversation only (no files needed). Level 2 is a credit card CSV. Level 3 is a pay stub. Each level produces useful output. You stop whenever you're comfortable.</p>
+<p><strong>3. A data ladder</strong> that unlocks deeper analysis as you share more. Level 0 is conversation only. Level 2 adds a credit card CSV. Level 3 adds a pay stub. Each level produces useful output. Stop whenever you want.</p>
 
 <h3>What makes it different</h3>
 
-<p><strong>Fix the present before planning the future.</strong> Most financial planning starts with "what's your retirement number?" Open Plan starts with "are you leaving money on the table right now?" A missed 401k match or RSU withholding gap costs more than a suboptimal asset allocation.</p>
+<p><strong>Fix the present before planning the future.</strong> Open Plan starts with leaks you can fix now: a missed 401(k) match, a withholding gap. These often matter more than asset allocation tweaks.</p>
 
-<p><strong>Budget is an output, not an input.</strong> You don't set a budget and try to stick to it. You set goals, compute required savings, and the spending ceiling falls out of the math. The budget is what's left over.</p>
+<p><strong>Budget is an output, not an input.</strong> Set goals. Compute required savings. The spending ceiling falls out of the math. The budget is what's left.</p>
 
-<p><strong>Each dollar decides for itself.</strong> The pre-tax vs Roth question reduces to one inequality: is your marginal rate now higher than your effective rate in retirement? If yes, pre-tax wins. No forecasting required. Each dollar you earn today can make the optimal choice independently.</p>
+<p><strong>Each dollar decides for itself.</strong> Many decisions reduce to simple inequalities. If your marginal tax rate now is higher than your effective rate in retirement, pre-tax usually wins. Each dollar makes the optimal choice independently.</p>
 
-<p><strong>Start anywhere, go deeper.</strong> There's no required sequence. The router picks the highest-impact module for your situation. If you have credit card debt, it starts there. If you're leaving employer match on the table, it starts there. The system finds the biggest leak first.</p>
+<p><strong>Start anywhere, go deeper.</strong> There's no required sequence. The router picks the highest-impact module for your situation.</p>
 
 <h3>The zero-data path</h3>
 
-<p>The most important design decision: Open Plan works with no data at all. The quick-start module asks five or six conversational questions (rough income, rough spending, age, do you get a 401k match?) and produces a first-pass savings waterfall from verbal estimates alone.</p>
+<p>Open Plan works with no data at all. The quick-start module asks for rough estimates: income, spending, age, 401(k) match status. It produces a first-pass savings waterfall from conversation alone.</p>
 
-<p>This matters because the biggest barrier to financial planning isn't complexity. It's activation energy. If someone has to go download three CSVs before they see any value, they'll never start. Open Plan delivers an actionable insight in five minutes with zero files. Then it says: "Want to go deeper? Here's exactly which file to grab next."</p>
+<p>This lowers the activation energy. You get actionable insight in minutes with zero files. Then it suggests exactly which file to grab next if you want to go deeper.</p>
 
 <h3>The tech</h3>
 
-<p>The system was built using a <a href="/writing/2026/02/sub-agent-trees.html">sub-agent tree</a>: 22 AI agents across three providers (OpenAI, Google, xAI) wrote all 18 modules in parallel in 2 minutes. Three independent models reviewed the output. A reconciliation agent applied consensus fixes. Total build time from blueprint to verified v1: about 8 minutes.</p>
+<p>Built with a <a href="/writing/2026/02/sub-agent-trees.html">sub-agent tree</a>. Twenty-two AI agents across three providers wrote all 18 modules in parallel. Three independent models reviewed the output. A reconciliation agent applied consensus fixes. Blueprint to verified v1: about 8 minutes.</p>
 
-<p>The modules themselves are plain markdown with YAML frontmatter. Each declares its prerequisites, required data level, output artifacts, and completion signal. The router reads these declarations to manage session flow. There's no code, no database, no API. The AI is the runtime.</p>
+<p>The modules are plain markdown with YAML frontmatter declaring prerequisites, data level, outputs, and completion signals. The router manages flow. No code, no database, no API. The AI is the runtime.</p>
 
 <h3>Privacy</h3>
 
-<p>If you use a cloud AI (Claude, ChatGPT), your financial data goes through their servers. That's the honest truth, and the router tells users this up front.</p>
+<p>If you use a cloud AI (Claude, ChatGPT, Gemini), your financial data is transmitted to that provider's servers. The router makes this explicit. Check your provider's privacy policy.</p>
 
-<p>If you care about privacy, run it with a local model. The modules are just text. Any model that can follow instructions can run them. A 70B parameter model on a Mac with 64GB of RAM handles it fine.</p>
+<p>If you want total privacy, run Open Plan with a local model. The modules are just text. Any instruction-following model on your own hardware works. A 70B parameter model on a Mac with 64GB of RAM handles it fine.</p>
 
-<p>Either way, your data stays in your folder. There's no server, no telemetry, no account. Delete the folder and it's gone.</p>
+<p>Either way, no third-party app or financial company sees your data. Your files live in your folder. Delete the folder and the data is gone.</p>
 
-<h3>What it's not</h3>
+<h3>Disclaimer</h3>
 
-<p>Open Plan is not financial advice. It's a structured way to think about your money, powered by whatever AI you already use. The system includes disclaimers and uncertainty protocols. When it doesn't have enough information, it says so. When a question requires a professional (estate planning, tax filing, insurance), it says that too.</p>
+<p>Open Plan is not financial, tax, legal, or investment advice. It is an educational toolkit and structured workflow for thinking through your money. Outputs depend on your inputs and the quality of the AI you use. When a question requires a professional (tax filing, estate planning, insurance), the system says so. Consult a qualified professional for personalized guidance. No guarantees of accuracy or completeness.</p>
 
-<p>It's also not a product. There's no company behind it, no monetization plan, no premium tier. It's an open-source experiment in whether the right prompt architecture can replace a $5,000/year financial advisor for the 90% of cases that are straightforward.</p>
+<p>It is also not a product. There is no company behind it, no monetization plan, no premium tier. It is an open-source experiment.</p>
 
 <h3>Try it</h3>
 
-<p>The repo is at <a href="https://github.com/abclark/open-plan">github.com/abclark/open-plan</a>. Clone it, open it in any AI, and start talking.</p>
+<p>Repo: <a href="https://github.com/abclark/open-plan">github.com/abclark/open-plan</a></p>
+
+<p>Clone it. Open the folder in your AI of choice. Start with: "help me with my finances."</p>
 
 <hr>
 <p><a href="/writing/">← Writing</a> | <a href="/">Home</a></p>
