@@ -8,107 +8,196 @@
 
 <h2>Sub-Agent Trees: Hierarchical Task Decomposition for AI</h2>
 
-<p>I had a 56,000-word document that needed a complete redesign. Doing it in one shot would produce mush. Doing it sequentially would take days. So I broke it into a tree.</p>
+<p>I had a 56,000-word document that needed a complete redesign. Doing it in one shot would produce mush. Doing it sequentially would take days. So I broke it into a tree, built an orchestrator, and ran the whole thing across three AI providers in parallel. The result: 227,000 characters of production-ready output in 2 minutes 14 seconds, reviewed by three independent models in 86 seconds, and all fixes verified in 107 seconds.</p>
+
+<p>This post explains the idea, shows the code, and walks through the actual run.</p>
 
 <h3>The Idea</h3>
 
 <p>Treat complex AI tasks like a compiler treats code: break the problem into independent pieces, process them in parallel, then combine the results bottom-up.</p>
 
-<p>The final result is the root node of a tree. You decompose down to leaf tasks. Leaves execute in parallel across multiple AI models. Results flow up through synthesis layers. Each layer resolves conflicts between its children. The root produces the final output.</p>
-
-<h3>The Architecture</h3>
+<p>Tasks form a DAG (directed acyclic graph). Some depend on others; most don't. The orchestrator figures out which can run simultaneously, groups them into layers, and fires each layer in parallel. Outputs from one layer feed into the next.</p>
 
 <pre>
-            [Final Blueprint]              Layer 2 (Root)
-               /            \
-      [System Arch]      [Content Plan]    Layer 1 (Synthesis)
-       /     |    \       /     |     \
-    Router Module State  Data  Audit  AI    Layer 0 (Leaves)
+          [Merge]              Layer 2: synthesize everything
+          /      \
+   [Synthesis A] [Synthesis B]  Layer 1: combine leaf outputs
+    /    |    \    /    |    \
+ [T1]  [T2]  [T3] [T4] [T5] [T6]   Layer 0: independent leaves
 </pre>
 
-<p>Nine agents. Three layers. Three AI providers running in parallel.</p>
+<p>Layer 0 tasks run simultaneously. Layer 1 waits for Layer 0 to finish. A merge agent optionally reads everything and produces the final output.</p>
 
-<h3>Layer 0: Leaves</h3>
+<h3>The Code</h3>
 
-<p>Six independent tasks, each given a focused scope:</p>
+<p>~300 lines of Python. No framework, no LangChain, no abstractions-on-abstractions. Just async Python and YAML. Four parts:</p>
 
-<ol>
-<li><strong>Router Design</strong> — How does the system assess where a user is and pick the next step?</li>
-<li><strong>Module Template</strong> — What's the standard structure for each topic module?</li>
-<li><strong>State Schema</strong> — How does the system remember what's been done between sessions?</li>
-<li><strong>Data Ladder</strong> — How do you progressively gather data without losing the user?</li>
-<li><strong>Content Audit</strong> — What exists, what's missing, what needs rewriting?</li>
-<li><strong>AI Instructions</strong> — What rules govern the AI's behavior, tone, and routing?</li>
-</ol>
+<p><strong>1. Providers (~80 lines).</strong> Each AI provider is a class with one method: <code>complete(system, prompt, model) → str</code>. Four providers ship out of the box: Anthropic, OpenAI, Google, xAI. Adding a provider is five lines. xAI uses the OpenAI client with a different <code>base_url</code> because Grok's API is OpenAI-compatible.</p>
 
-<p>All six ran in parallel. Three on Claude Opus 4.6, three on GPT-5.2. Each read the same source documents but worked independently. Total wall-clock time: about 90 seconds.</p>
+<p><strong>2. Data structures (~30 lines).</strong> Two dataclasses. A <code>Task</code> has an id, prompt, provider, model, dependencies, files to read, and a place to put its output. A <code>Plan</code> is a list of tasks plus optional merge config. No inheritance hierarchy, no plugin system, no registry pattern.</p>
 
-<h3>Layer 1: Synthesis</h3>
-
-<p>Two synthesis agents, each combining three leaf outputs:</p>
+<p><strong>3. The orchestrator (~150 lines).</strong> Does five things:</p>
 
 <ul>
-<li><strong>System Architecture</strong> (Gemini 3 Pro) — Combined Router + Module Template + State Schema. Resolved interface mismatches: the router expected one completion signal format, the module template produced another. The synthesis agent picked the better design and unified them.</li>
-<li><strong>Content Plan</strong> (Claude Opus 4.6) — Combined Data Ladder + Content Audit + AI Instructions. Produced a data-level-by-module matrix showing exactly which analysis is possible at each stage of data gathering.</li>
+<li><em>Topological sort</em> groups tasks into parallelizable layers. Start with tasks that have no dependencies, mark them complete, find the next batch, repeat.</li>
+<li><em>Prompt assembly</em> combines shared context, dependency outputs, reference files, and the task's own prompt.</li>
+<li><em>Parallel execution</em> is one line: <code>asyncio.gather(*[self._run_task(t) for t in layer])</code>. If you have 21 tasks with no dependencies, all 21 fire at once.</li>
+<li><em>Context syncing</em> appends truncated summaries to a shared context file after each layer. Information flows between layers without explicit wiring.</li>
+<li><em>Merge</em> reads every task output and produces a final synthesis.</li>
 </ul>
 
-<p>These ran in parallel too. About two minutes each.</p>
+<p><strong>4. YAML plan loader (~30 lines).</strong> Plans are YAML files. Each task specifies what to do, which model to use, what files to read, and what to depend on. The loader turns this into dataclasses. That's it.</p>
 
-<h3>Layer 2: Root</h3>
+<h3>Design Decisions</h3>
 
-<p>One final agent (Opus) read both synthesis documents and the original source. It resolved conflicts between the system architecture and the content plan, produced a definitive file tree, build order, and effort estimate.</p>
+<p><strong>No framework.</strong> The entire thing is stdlib Python plus four provider SDKs. When you read the code, you see the code.</p>
 
-<p>Total output: a concrete blueprint with 22 files, a 4-week build plan, and a working README.</p>
+<p><strong>Async all the way down.</strong> <code>asyncio.gather</code> is the only concurrency primitive. No threads, no processes, no queues.</p>
 
-<h3>The Context Problem</h3>
+<p><strong>Files as interface.</strong> Each task writes its output to a file. You can inspect intermediate results during execution, re-run individual tasks, or hand-edit outputs and re-run only the merge.</p>
 
-<p>The obvious limitation of a pure tree: leaf nodes can't see each other's work. The Router design agent and the State Schema agent are deeply coupled, but they ran independently. Mismatches are inevitable.</p>
+<p><strong>Provider as parameter.</strong> Each task declares its provider and model. The orchestrator doesn't care which model runs which task. Put GPT on the hard reasoning tasks, Grok on the simple ones, Gemini on the synthesis.</p>
 
-<p>Three approaches to fixing this:</p>
+<h3>Phase 1: Design (the tree from the original post)</h3>
 
-<p><strong>1. DAG instead of tree.</strong> Some leaves depend on others. Run Router first, then feed its output to State Schema. More correct, but slower (sequential dependencies kill parallelism).</p>
+<p>The first use was redesigning a 56,000-word financial planning document. Nine agents across three layers produced a detailed blueprint: the file tree, module specifications, routing logic, state schema, and build order.</p>
 
-<p><strong>2. Shared context file.</strong> Before firing parallel agents, write everything known so far into a shared CONTEXT.md. Each agent reads it, does its work, appends findings. A merge agent resolves conflicts. Next round reads the updated context. Eventual consistency, not lock-step coordination.</p>
+<pre>
+            [Final Blueprint]              Layer 2 (Opus)
+               /            \
+      [System Arch]      [Content Plan]    Layer 1 (Gemini, Opus)
+       /     |    \       /     |     \
+    Router Module State  Data  Audit  AI    Layer 0 (Opus, GPT-5.2)
+</pre>
 
-<p><strong>3. Iterative rounds.</strong> Fire all leaves in parallel (round 1). Collect outputs. Share ALL outputs with ALL agents. Each revises (round 2). Expensive but catches every mismatch. Like peer review.</p>
+<p>Nine agents. Three layers. Three providers. The blueprint said: 22 files, 4-week critical path if done manually.</p>
 
-<p>The practical answer is a hybrid: parallel execution with a good merge step between rounds. You don't need perfect coordination during execution. You need a good synthesis layer after.</p>
+<h3>Phase 2: Build</h3>
 
-<h3>Multi-Model Arbitrage</h3>
+<p>Then I used the blueprint to build the actual system. 21 modules in parallel (Layer 0), plus an integration check (Layer 1), plus a merge.</p>
 
-<p>Different models have different strengths. By running leaf nodes across providers, you get diversity of thought:</p>
+<pre>
+  Layer 0 (21 tasks in parallel):
+    OpenAI GPT-5.2:  router, quick-start, spending, tax-leaks,
+                     retirement-accounts, goals-and-budget, savings-waterfall
+    xAI Grok:        state-schema, module-template, cash-and-debt, benefits,
+                     equity-comp, action-plan, philosophy, principles,
+                     glossary, career, readme
+    Google Gemini:   income, net-worth, portfolio
 
+  Layer 1 (1 task):
+    GPT-5.2:         integration-check (reads all 21 outputs)
+
+  Merge:
+    GPT-5.2:         final reconciliation
+</pre>
+
+<p><strong>Results:</strong></p>
 <ul>
-<li><strong>Claude Opus</strong> — Best at nuanced reasoning and long-form writing. Good for design philosophy and instruction sets.</li>
-<li><strong>GPT-5.2</strong> — Fast, structured, good at schemas and manifests. Produces clean JSON and tables.</li>
-<li><strong>Gemini 3 Pro</strong> — Fast synthesis. Resolved cross-document conflicts in 41 seconds.</li>
+<li>22 tasks completed: 22/22 ✅</li>
+<li>Total time: <strong>2 minutes 14 seconds</strong></li>
+<li>Total output: <strong>227,000 characters</strong> across 22 files</li>
+<li>xAI Grok: fastest (avg 25s per task)</li>
+<li>Google Gemini: medium (avg 40s)</li>
+<li>OpenAI GPT-5.2: slowest but most detailed (avg 55s, up to 17KB per module)</li>
 </ul>
 
-<p>Cost per leaf agent: fractions of a cent (GPT-5.2) to a few cents (Opus). Total cost for the full tree: under a dollar. Fifteen minutes wall clock for what would have taken a day of sequential work.</p>
+<p>The same work done sequentially on a single model would take 20-30 minutes. Parallelism across providers turns hours into minutes.</p>
+
+<h3>Phase 3: Multi-Model Review</h3>
+
+<p>Here's where it gets interesting. Different models have different blind spots. So I ran the same review task on three providers in parallel, then reconciled the results:</p>
+
+<pre>
+  Layer 0 (3 reviewers, same prompt, same input):
+    GPT-5.2:   "Review all 24 files for financial accuracy,
+                routing logic, consistency, UX, gaps..."
+    Grok:      (same prompt)
+    Gemini:    (same prompt)
+
+  Layer 1:
+    GPT-5.2:   Reconciliation — read all 3 reviews,
+               apply consensus filter
+
+  Merge:
+    GPT-5.2:   Top 5 fixes
+</pre>
+
+<p>The consensus filter: only include issues flagged by <strong>2 or more</strong> reviewers. Single-reviewer issues go in a "disputed" section. This reduces false positives and surfaces the real problems.</p>
+
+<p><strong>Results:</strong></p>
+<ul>
+<li>Total time: <strong>86 seconds</strong></li>
+<li>Scores: GPT-5.2: 6.5/10 | Grok: 8/10 | Gemini: 8.5/10 | Average: 7.7/10</li>
+<li>Ship decision: <strong>YES WITH FIXES</strong></li>
+<li>3 consensus CRITICAL issues, 2 MAJOR, several MINOR</li>
+</ul>
+
+<p>The three models caught different things. GPT flagged hardcoded tax limits and schema inconsistencies. Grok caught placeholder modules being routed as if they were real. Gemini found prerequisite enforcement gaps. No single model found everything. Together they produced a comprehensive review.</p>
+
+<h3>Phase 4: Apply Fixes</h3>
+
+<p>The final pipeline applied all review fixes:</p>
+
+<pre>
+  Layer 0 (3 parallel):
+    Create limits.json (GPT-5.2)
+    Fix router (GPT-5.2)
+    Fix placeholder modules (Grok)
+
+  Layer 1 (5 parallel):
+    Update retirement module (GPT-5.2)
+    Update benefits module (Grok)
+    Update savings waterfall (Grok)
+    Update income module (Gemini)
+    Fix tax-leaks safe harbor (GPT-5.2)
+
+  Layer 2:
+    Verification (Gemini)
+
+  Merge:
+    Ship decision (GPT-5.2)
+</pre>
+
+<p><strong>Results:</strong> 9/9 ✅ in <strong>107 seconds</strong>. All fixes verified. "V1 READY TO SHIP."</p>
+
+<h3>The Full Pipeline</h3>
+
+<table border="1" cellpadding="5">
+<tr><th>Phase</th><th>Tasks</th><th>Time</th><th>Output</th></tr>
+<tr><td>Design (tree)</td><td>9</td><td>~3 min</td><td>Blueprint</td></tr>
+<tr><td>Build</td><td>22</td><td>2m 14s</td><td>227K chars, 22 files</td></tr>
+<tr><td>Review</td><td>4</td><td>1m 26s</td><td>3 reviews + reconciliation</td></tr>
+<tr><td>Fix</td><td>9</td><td>1m 47s</td><td>All fixes applied + verified</td></tr>
+<tr><td><strong>Total</strong></td><td><strong>44</strong></td><td><strong>~8.5 min</strong></td><td><strong>Complete v1 system</strong></td></tr>
+</table>
+
+<p>Estimated API cost for the entire pipeline: $1-3.</p>
+
+<h3>Limitations</h3>
+
+<p><strong>No streaming.</strong> Tasks complete atomically. You see nothing until a task finishes.</p>
+
+<p><strong>No retry logic.</strong> If a task fails (auth error, rate limit, timeout), it writes the error to the output file and moves on.</p>
+
+<p><strong>Context truncation.</strong> Shared context truncates each task's output to 2,000 characters. Direct dependency outputs are passed in full, but shared context is lossy.</p>
+
+<p><strong>8,192 token output limit.</strong> Hardcoded across all providers. Some tasks want more.</p>
+
+<p><strong>No cost tracking.</strong> The manifest records timing but not token counts. You check your provider dashboards after the run.</p>
 
 <h3>When to Use This</h3>
 
-<p>Sub-agent trees work when:</p>
-<ul>
-<li>The task is decomposable into independent subtasks</li>
-<li>You need multiple perspectives or expertise areas</li>
-<li>Sequential processing would be too slow</li>
-<li>The synthesis step (resolving conflicts) is well-defined</li>
-</ul>
+<p>Sub-agent trees work when the task is decomposable, you need multiple perspectives, sequential processing would be too slow, and the synthesis step is well-defined.</p>
 
-<p>They don't work when:</p>
-<ul>
-<li>Every step depends on the previous one</li>
-<li>The task requires a single coherent voice throughout</li>
-<li>Context that emerges mid-task would change everything</li>
-</ul>
+<p>They don't work when every step depends on the previous one, the task requires a single coherent voice, or context that emerges mid-task would change everything.</p>
 
-<h3>What I'd Build Next</h3>
+<h3>Source</h3>
 
-<p>A lightweight orchestrator: define tasks as a DAG in a config file, specify models per node, maintain a shared context that syncs between rounds, and auto-merge results. Provider-agnostic. Maybe 300 lines of Python. The tree structure described here was orchestrated manually through an AI assistant. It should be a tool.</p>
+<p>The orchestrator is open source: <a href="https://github.com/abclark/sub-agent-trees">github.com/abclark/sub-agent-trees</a>. MIT license. ~300 lines. No dependencies beyond the provider SDKs.</p>
 
 <hr>
-<p><em>The system redesigned in this post is <a href="https://github.com/abclark/open-plan">Open Plan</a>, an open-source financial planning playbook.</em></p>
+<p><em>The system built in this post is <a href="https://github.com/abclark/open-plan">Open Plan</a>, an open-source financial planning system.</em></p>
 <p><a href="/writing/">← Writing</a> | <a href="/">Home</a></p>
 </body>
 </html>
