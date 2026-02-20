@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head><title>Sub-Agent Trees - Aubrey Clark</title></head>
+<body>
+<h2><a href="/">Aubrey Clark</a> / <a href="/writing/">Writing</a></h2>
+<p><em>🤖 AI-assisted draft — February 20, 2026</em></p>
+<hr>
+
+<h2>Sub-Agent Trees: Hierarchical Task Decomposition for AI</h2>
+
+<p>I had a 56,000-word document that needed a complete redesign. Doing it in one shot would produce mush. Doing it sequentially would take days. So I broke it into a tree.</p>
+
+<h3>The Idea</h3>
+
+<p>Treat complex AI tasks like a compiler treats code: break the problem into independent pieces, process them in parallel, then combine the results bottom-up.</p>
+
+<p>The final result is the root node of a tree. You decompose down to leaf tasks. Leaves execute in parallel across multiple AI models. Results flow up through synthesis layers. Each layer resolves conflicts between its children. The root produces the final output.</p>
+
+<h3>The Architecture</h3>
+
+<pre>
+            [Final Blueprint]              Layer 2 (Root)
+               /            \
+      [System Arch]      [Content Plan]    Layer 1 (Synthesis)
+       /     |    \       /     |     \
+    Router Module State  Data  Audit  AI    Layer 0 (Leaves)
+</pre>
+
+<p>Nine agents. Three layers. Three AI providers running in parallel.</p>
+
+<h3>Layer 0: Leaves</h3>
+
+<p>Six independent tasks, each given a focused scope:</p>
+
+<ol>
+<li><strong>Router Design</strong> — How does the system assess where a user is and pick the next step?</li>
+<li><strong>Module Template</strong> — What's the standard structure for each topic module?</li>
+<li><strong>State Schema</strong> — How does the system remember what's been done between sessions?</li>
+<li><strong>Data Ladder</strong> — How do you progressively gather data without losing the user?</li>
+<li><strong>Content Audit</strong> — What exists, what's missing, what needs rewriting?</li>
+<li><strong>AI Instructions</strong> — What rules govern the AI's behavior, tone, and routing?</li>
+</ol>
+
+<p>All six ran in parallel. Three on Claude Opus 4.6, three on GPT-5.2. Each read the same source documents but worked independently. Total wall-clock time: about 90 seconds.</p>
+
+<h3>Layer 1: Synthesis</h3>
+
+<p>Two synthesis agents, each combining three leaf outputs:</p>
+
+<ul>
+<li><strong>System Architecture</strong> (Gemini 3 Pro) — Combined Router + Module Template + State Schema. Resolved interface mismatches: the router expected one completion signal format, the module template produced another. The synthesis agent picked the better design and unified them.</li>
+<li><strong>Content Plan</strong> (Claude Opus 4.6) — Combined Data Ladder + Content Audit + AI Instructions. Produced a data-level-by-module matrix showing exactly which analysis is possible at each stage of data gathering.</li>
+</ul>
+
+<p>These ran in parallel too. About two minutes each.</p>
+
+<h3>Layer 2: Root</h3>
+
+<p>One final agent (Opus) read both synthesis documents and the original source. It resolved conflicts between the system architecture and the content plan, produced a definitive file tree, build order, and effort estimate.</p>
+
+<p>Total output: a concrete blueprint with 22 files, a 4-week build plan, and a working README.</p>
+
+<h3>The Context Problem</h3>
+
+<p>The obvious limitation of a pure tree: leaf nodes can't see each other's work. The Router design agent and the State Schema agent are deeply coupled, but they ran independently. Mismatches are inevitable.</p>
+
+<p>Three approaches to fixing this:</p>
+
+<p><strong>1. DAG instead of tree.</strong> Some leaves depend on others. Run Router first, then feed its output to State Schema. More correct, but slower (sequential dependencies kill parallelism).</p>
+
+<p><strong>2. Shared context file.</strong> Before firing parallel agents, write everything known so far into a shared CONTEXT.md. Each agent reads it, does its work, appends findings. A merge agent resolves conflicts. Next round reads the updated context. Eventual consistency, not lock-step coordination.</p>
+
+<p><strong>3. Iterative rounds.</strong> Fire all leaves in parallel (round 1). Collect outputs. Share ALL outputs with ALL agents. Each revises (round 2). Expensive but catches every mismatch. Like peer review.</p>
+
+<p>The practical answer is a hybrid: parallel execution with a good merge step between rounds. You don't need perfect coordination during execution. You need a good synthesis layer after.</p>
+
+<h3>Multi-Model Arbitrage</h3>
+
+<p>Different models have different strengths. By running leaf nodes across providers, you get diversity of thought:</p>
+
+<ul>
+<li><strong>Claude Opus</strong> — Best at nuanced reasoning and long-form writing. Good for design philosophy and instruction sets.</li>
+<li><strong>GPT-5.2</strong> — Fast, structured, good at schemas and manifests. Produces clean JSON and tables.</li>
+<li><strong>Gemini 3 Pro</strong> — Fast synthesis. Resolved cross-document conflicts in 41 seconds.</li>
+</ul>
+
+<p>Cost per leaf agent: fractions of a cent (GPT-5.2) to a few cents (Opus). Total cost for the full tree: under a dollar. Fifteen minutes wall clock for what would have taken a day of sequential work.</p>
+
+<h3>When to Use This</h3>
+
+<p>Sub-agent trees work when:</p>
+<ul>
+<li>The task is decomposable into independent subtasks</li>
+<li>You need multiple perspectives or expertise areas</li>
+<li>Sequential processing would be too slow</li>
+<li>The synthesis step (resolving conflicts) is well-defined</li>
+</ul>
+
+<p>They don't work when:</p>
+<ul>
+<li>Every step depends on the previous one</li>
+<li>The task requires a single coherent voice throughout</li>
+<li>Context that emerges mid-task would change everything</li>
+</ul>
+
+<h3>What I'd Build Next</h3>
+
+<p>A lightweight orchestrator: define tasks as a DAG in a config file, specify models per node, maintain a shared context that syncs between rounds, and auto-merge results. Provider-agnostic. Maybe 300 lines of Python. The tree structure described here was orchestrated manually through an AI assistant. It should be a tool.</p>
+
+<hr>
+<p><em>The system redesigned in this post is <a href="https://github.com/abclark/open-plan">Open Plan</a>, an open-source financial planning playbook.</em></p>
+<p><a href="/writing/">← Writing</a> | <a href="/">Home</a></p>
+</body>
+</html>
