@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Investment Analysis — Aubrey Clark</title>
+    <style>
+        body { line-height: 1.4; font-size: 16px; padding: 0 10px; margin: 50px auto; max-width: 650px; }
+        img { max-width: 100%; height: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/writing/">← Writing</a>
+        <div class="byline">March 2026</div>
+        <div id="content"><em>Loading...</em></div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        fetch('report.md?v=2')
+            .then(r => r.text())
+            .then(md => { document.getElementById('content').innerHTML = marked.parse(md); })
+            .catch(e => { document.getElementById('content').innerHTML = '<p>Error loading report.</p>'; });
+    </script>
+</body>
+</html>

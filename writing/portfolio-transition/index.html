@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tax-Efficient Portfolio Transition</title>
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\(',right:'\\)',display:false}]});"></script>
+  <style>
+    body{background:#fff;color:#111;font-family:Georgia,serif;max-width:960px;margin:36px auto;padding:0 20px;line-height:1.65}
+    h1{font-size:1.8rem;font-weight:700;margin:0 0 8px;border-bottom:2px solid #111;padding-bottom:8px}
+    h2{font-size:1.3rem;font-weight:600;margin:28px 0 10px;color:#222}
+    h3{font-size:1.1rem;font-weight:600;margin:20px 0 8px}
+    p{margin:0 0 14px}
+    a{color:#0b57d0;text-decoration:none}
+    a:hover{text-decoration:underline}
+    .meta{color:#555;font-size:.92rem;margin-bottom:22px}
+    .card{border:1px solid #ddd;border-radius:10px;padding:18px;margin:18px 0}
+    .insight{background:#f8f5e6;border-left:4px solid #c5a000;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0}
+    .insight strong{color:#856d00}
+    table{border-collapse:collapse;width:100%;margin:12px 0}
+    th,td{border:1px solid #ddd;padding:6px 10px;text-align:right;font-size:.93rem}
+    th{background:#f7f7f7;font-weight:600}
+    th:first-child,td:first-child{text-align:left}
+    code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em}
+    .small{color:#555;font-size:.93rem}
+    label{display:block;margin:10px 0 4px;font-size:.95rem}
+    input[type=range]{width:100%}
+    .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+    .val{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600;color:#0b57d0}
+    sup{font-size:.7em}
+    ol,ul{margin:0 0 14px 24px}
+    li{margin-bottom:6px}
+    .etf-list{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px}
+    .etf-tag{background:#eef;border:1px solid #ccd;border-radius:6px;padding:3px 10px;font-size:.88rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    @media(max-width:650px){.two-col{grid-template-columns:1fr}.controls{grid-template-columns:1fr}}
+    footer{margin-top:40px;padding-top:16px;border-top:1px solid #ddd;color:#777;font-size:.88rem}
+  </style>
+</head>
+<body>
+
+
+<h1>Tax-Efficient Portfolio Transition</h1>
+<p class="meta">Aubrey Clark &middot; Portfolio Transition Problem &middot; Numerical companion</p>
+
+<p>A client holds a taxable portfolio of five ETFs and wants to rebalance toward a target allocation. Selling appreciated positions triggers capital gains taxes. The optimizer balances <em>investment efficiency</em> (tracking error vs. the target) against <em>tax cost</em> (realized capital gains). This page formalizes the problem, derives the solution, and provides an interactive tool to explore the tradeoff.</p>
+
+<!-- ─────────────────── SETUP ─────────────────── -->
+<h2>1. Setup</h2>
+
+<p>Three deposits of $100,000 each on the following dates, each split equally (20%) across five ETFs:</p>
+
+<div class="etf-list">
+  <span class="etf-tag">VTI</span>
+  <span class="etf-tag">VEA</span>
+  <span class="etf-tag">VWO</span>
+  <span class="etf-tag">BND</span>
+  <span class="etf-tag">EMB</span>
+</div>
+
+<table>
+  <thead><tr><th>Deposit</th><th>Date</th><th>Amount</th><th>Per ETF</th><th>Holding Period (as of 2018-03-14)</th><th>Tax Rate</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>2010-01-04</td><td>$100,000</td><td>$20,000</td><td>&gt; 1 year (long-term)</td><td>20%</td></tr>
+    <tr><td>2</td><td>2014-01-02</td><td>$100,000</td><td>$20,000</td><td>&gt; 1 year (long-term)</td><td>20%</td></tr>
+    <tr><td>3</td><td>2018-01-02</td><td>$100,000</td><td>$20,000</td><td>&lt; 1 year (short-term)</td><td>30%</td></tr>
+  </tbody>
+</table>
+
+<p>The rebalance date is <strong>March 14, 2018</strong>. The target allocation is equal-weighted: 20% in each ETF.</p>
+
+<!-- ─────────────────── FORMULATION ─────────────────── -->
+<h2>2. Optimization Problem</h2>
+
+<p>The investor solves:</p>
+
+$$\min_{w} \quad \lambda \cdot T \cdot (w - w^*)^\top \Sigma \, (w - w^*) \;+\; \sum_{i=1}^{N}\sum_{j=1}^{L_i} \tau_{ij} \cdot \max\!\big(0,\; g_{ij}\big) \cdot s_{ij}$$
+
+<p>subject to:</p>
+
+$$\sum_{i} w_i = 1, \qquad w_i \geq 0 \;\;\forall\, i, \qquad 0 \leq s_{ij} \leq \text{shares\_held}_{ij} \;\;\forall\, i,j$$
+
+<h3>Variable definitions</h3>
+
+<table>
+  <thead><tr><th>Symbol</th><th>Definition</th></tr></thead>
+  <tbody>
+    <tr><td>\(w\)</td><td>Post-rebalance portfolio weights (decision variable)</td></tr>
+    <tr><td>\(w^*\)</td><td>Target weights (equal-weighted: 20% each)</td></tr>
+    <tr><td>\(\Sigma\)</td><td>Forward-looking variance-covariance matrix (\(N \times N\))</td></tr>
+    <tr><td>\(\lambda\)</td><td>Tradeoff parameter: penalty on tracking error vs. tax cost</td></tr>
+    <tr><td>\(T\)</td><td>Investment horizon in years</td></tr>
+    <tr><td>\(N\)</td><td>Number of assets (5)</td></tr>
+    <tr><td>\(L_i\)</td><td>Number of tax lots for asset \(i\) (3: one per deposit)</td></tr>
+    <tr><td>\(\tau_{ij}\)</td><td>Tax rate for lot \(j\) of asset \(i\)</td></tr>
+    <tr><td>\(g_{ij}\)</td><td>Capital gain per share for lot \(j\) of asset \(i\)</td></tr>
+    <tr><td>\(s_{ij}\)</td><td>Shares sold from lot \(j\) of asset \(i\)</td></tr>
+  </tbody>
+</table>
+
+<h3>Tax rate assignment</h3>
+
+$$\tau_{ij} = \begin{cases} 0.30 & \text{if holding period} < 1 \text{ year (short-term)} \\ 0.20 & \text{if holding period} \geq 1 \text{ year (long-term)} \end{cases}$$
+
+<h3>Tax cost per lot</h3>
+
+$$\text{TaxCost}_{ij} = \tau_{ij} \cdot \max\!\Big(0,\; \big(\text{Price}_{\text{rebal}} - \text{Price}_{\text{purchase},j}\big) \cdot s_{ij}\Big)$$
+
+<!-- ─────────────────── INTUITION ─────────────────── -->
+<h2>3. Economic Intuition</h2>
+
+<div class="two-col">
+  <div class="card">
+    <h3>First term: Tracking Error</h3>
+    <p>\(\lambda \cdot T \cdot (w - w^*)^\top \Sigma \,(w - w^*)\)</p>
+    <p>Penalizes deviation from the target allocation, weighted by the covariance structure. A larger deviation in volatile or correlated assets costs more. The penalty scales with the investment horizon \(T\): a suboptimal allocation compounds over time.</p>
+  </div>
+  <div class="card">
+    <h3>Second term: Tax Cost</h3>
+    <p>\(\sum_i \sum_j \tau_{ij} \cdot \max(0, g_{ij}) \cdot s_{ij}\)</p>
+    <p>The total capital gains tax incurred from selling. Lots with large embedded gains (especially at the 30% short-term rate) generate a real cash drag. Lots with losses can be sold "for free" or harvested for tax benefit.</p>
+  </div>
+</div>
+
+<div class="insight">
+  <strong>The \(\lambda\) tradeoff.</strong> High \(\lambda\) means the investor prioritizes reaching the target allocation and will tolerate a larger tax bill. Low \(\lambda\) means the investor is tax-sensitive and will accept a suboptimal portfolio to avoid triggering gains. The investment horizon \(T\) multiplies the effective \(\lambda\): a longer horizon justifies more aggressive rebalancing because the cost of suboptimal allocation compounds.
+</div>
+
+<!-- ─────────────────── HORIZON ─────────────────── -->
+<h2>4. Impact of Investment Horizon</h2>
+
+<p>The horizon \(T\) enters multiplicatively with the tracking error penalty:</p>
+
+$$\text{Effective penalty} = \lambda \cdot T$$
+
+<table>
+  <thead><tr><th>Horizon</th><th>Effect</th><th>Behavioral implication</th></tr></thead>
+  <tbody>
+    <tr><td>\(T = 1\) year</td><td>Low effective penalty</td><td>Tolerate more deviation from target. Minimize taxes. Stay closer to current weights.</td></tr>
+    <tr><td>\(T = 5\) years</td><td>High effective penalty</td><td>Worth paying more taxes to get closer to optimal. Trade more aggressively toward target.</td></tr>
+  </tbody>
+</table>
+
+<div class="insight">
+  <strong>Short horizon:</strong> The "cost" of being in a suboptimal portfolio is borne for only one year, so it is not worth paying large taxes to fix it. <strong>Long horizon:</strong> The cumulative efficiency loss exceeds the one-time tax cost, justifying more aggressive rebalancing.
+</div>
+
+<!-- ─────────────────── NON-NATIVE ─────────────────── -->
+<h2>5. Extension: Non-Native ETFs (QQQ + VNQ)</h2>
+
+<p>When the client also holds ETFs outside the target universe, the optimization extends to a 7-asset problem:</p>
+
+<div class="etf-list">
+  <span class="etf-tag">VTI</span>
+  <span class="etf-tag">VEA</span>
+  <span class="etf-tag">VWO</span>
+  <span class="etf-tag">BND</span>
+  <span class="etf-tag">EMB</span>
+  <span class="etf-tag" style="background:#fee;border-color:#dcc">QQQ</span>
+  <span class="etf-tag" style="background:#fee;border-color:#dcc">VNQ</span>
+</div>
+
+<p>The target now has <strong>zero weight</strong> in QQQ and VNQ: \(w^* = (0.2, 0.2, 0.2, 0.2, 0.2, 0, 0)\). The setup: $60,000 in QQQ and $40,000 in VNQ, both purchased 2010-01-04 (long-term, 20% tax rate), plus two deposits of $100,000 each in the five native ETFs.</p>
+
+<p>The optimizer wants to sell all QQQ and VNQ but faces enormous embedded gains (QQQ appreciated ~300% since 2010). Two key insights:</p>
+
+<ol>
+  <li><strong>QQQ as VTI substitute.</strong> QQQ is highly correlated with VTI (both US equities), so retaining some QQQ incurs low tracking error. The optimizer retains a significant portion.</li>
+  <li><strong>VNQ is less substitutable.</strong> REITs have lower correlation with the target universe, so the optimizer sells more VNQ to buy underweight assets.</li>
+</ol>
+
+<!-- ─────────────────── DATA ─────────────────── -->
+<h2>6. Portfolio Data (as of 2018-03-14)</h2>
+
+<p>The table below shows the current value of each tax lot, computed by compounding daily returns from the deposit date through the rebalance date. Total portfolio value is approximately $407,000.</p>
+
+<div id="lot-table"></div>
+
+<!-- ─────────────────── INTERACTIVE ─────────────────── -->
+<h2>7. Interactive: Tracking Error vs. Tax Cost Frontier</h2>
+
+<p>Use the sliders below to explore how the tradeoff parameter \(\lambda\), the investment horizon, and tax rates affect the optimal portfolio. The chart traces the efficient frontier: each point is the solution for a given \(\lambda\), showing the tracking error variance (horizontal) against the tax cost paid (vertical).</p>
+
+<div class="card">
+  <div class="controls">
+    <div>
+      <label>Investment Horizon \(T\)</label>
+      <input type="range" id="horizon" min="1" max="10" step="1" value="1">
+      <span class="small">T = <span id="horizon-val" class="val">1</span> years</span>
+    </div>
+    <div>
+      <label>Short-term tax rate \(\tau_{ST}\)</label>
+      <input type="range" id="tau-st" min="0" max="50" step="1" value="30">
+      <span class="small">\(\tau_{ST}\) = <span id="tau-st-val" class="val">30</span>%</span>
+    </div>
+    <div>
+      <label>Long-term tax rate \(\tau_{LT}\)</label>
+      <input type="range" id="tau-lt" min="0" max="40" step="1" value="20">
+      <span class="small">\(\tau_{LT}\) = <span id="tau-lt-val" class="val">20</span>%</span>
+    </div>
+  </div>
+  <div id="frontier-plot" style="width:100%;height:420px;margin-top:14px"></div>
+  <p class="small" style="margin-top:8px">Each dot represents the solution for a value of \(\lambda\). Moving right: lower tracking error (closer to target) but higher tax cost. The current portfolio (no trading) is the leftmost point.</p>
+</div>
+
+<!-- ─────────────────── WEIGHTS CHART ─────────────────── -->
+<h2>8. Optimal Weights by \(\lambda\)</h2>
+
+<div class="card">
+  <div class="controls">
+    <div>
+      <label>\(\lambda\) (tracking error penalty)</label>
+      <input type="range" id="lambda-slider" min="0" max="100" step="1" value="50">
+      <span class="small">\(\lambda\) = <span id="lambda-val" class="val">5.0</span></span>
+    </div>
+  </div>
+  <div id="weights-plot" style="width:100%;height:360px;margin-top:14px"></div>
+  <div id="summary-stats" style="margin-top:8px"></div>
+</div>
+
+<!-- ─────────────────── COVARIANCE ─────────────────── -->
+<h2>Appendix: Covariance Matrix (1-Year GBM)</h2>
+
+<p class="small">Estimated from daily returns of the five ETFs using geometric Brownian motion simulation. Used in the base-case optimization.</p>
+
+<div style="overflow-x:auto">
+<table id="cov-table">
+  <thead><tr><th></th><th>VTI</th><th>VEA</th><th>VWO</th><th>BND</th><th>EMB</th></tr></thead>
+  <tbody></tbody>
+</table>
+</div>
+
+<footer>
+  <p>Source: portfolio transition writeup, May 2018. ETF price data from Yahoo Finance. Optimization solved numerically using SciPy in the original Python work, with a browser-side approximation for this page.</p>
+</footer>
+
+<script>
+// ──────────────────────────────────────────────────────────
+// Data from the Python solver (portfolio_migration.py)
+// All values computed from HistoricalReturns.csv
+// ──────────────────────────────────────────────────────────
+
+const ETFs = ['VTI','VEA','VWO','BND','EMB'];
+
+// Cumulative gross returns from each deposit date to 2018-03-14
+// Computed from HistoricalReturns.csv via compounded daily log returns
+const r0 = [2.93647, 1.67218, 1.43332, 1.29061, 1.61593]; // 2010 deposit
+const r1 = [1.59375, 1.21845, 1.30290, 1.10722, 1.25639]; // 2014 deposit
+const r2 = [1.03177, 1.00223, 1.04966, 0.97991, 0.97309]; // 2018 deposit
+
+// Current values per lot (20000 * return)
+const p0 = r0.map(r => 20000 * r);
+const p1 = r1.map(r => 20000 * r);
+const p2 = r2.map(r => 20000 * r);
+const pTotal = ETFs.map((_, i) => p0[i] + p1[i] + p2[i]);
+const V = pTotal.reduce((a, b) => a + b, 0);
+const w0 = pTotal.map(p => p / V); // current weights
+
+// Target weights
+const wStar = [0.2, 0.2, 0.2, 0.2, 0.2];
+
+// Gains as fraction of current value: (1 - 1/r)
+const x0 = r0.map(r => 1 - 1/r);
+const x1 = r1.map(r => 1 - 1/r);
+const x2 = r2.map(r => 1 - 1/r);
+
+// 1-year GBM covariance matrix
+const S_gbm1 = [
+  [0.03024003, 0.03113395, 0.032312,  -0.00191701, 0.00486493],
+  [0.03113395, 0.04073124, 0.03919093,-0.00186533, 0.00647321],
+  [0.032312,   0.03919093, 0.05000397,-0.00147647, 0.0083719 ],
+  [-0.00191701,-0.00186533,-0.00147647, 0.00115522, 0.00059476],
+  [0.00486493, 0.00647321, 0.0083719,  0.00059476, 0.00555434]
+];
+
+// ──────────────────────────────────────────────────────────
+// Lot table
+// ──────────────────────────────────────────────────────────
+function buildLotTable() {
+  let html = '<table><thead><tr><th>ETF</th><th>2010 Lot</th><th>2014 Lot</th><th>2018 Lot</th><th>Total</th><th>Current Weight</th></tr></thead><tbody>';
+  for (let i = 0; i < 5; i++) {
+    const fmt = v => '$' + v.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    html += `<tr><td>${ETFs[i]}</td><td>${fmt(p0[i])}</td><td>${fmt(p1[i])}</td><td>${fmt(p2[i])}</td><td><strong>${fmt(pTotal[i])}</strong></td><td>${(w0[i]*100).toFixed(1)}%</td></tr>`;
+  }
+  html += `<tr style="border-top:2px solid #999"><td><strong>Total</strong></td><td><strong>$${p0.reduce((a,b)=>a+b,0).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',')}</strong></td><td><strong>$${p1.reduce((a,b)=>a+b,0).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',')}</strong></td><td><strong>$${p2.reduce((a,b)=>a+b,0).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',')}</strong></td><td><strong>$${V.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',')}</strong></td><td>100.0%</td></tr>`;
+  html += '</tbody></table>';
+  document.getElementById('lot-table').innerHTML = html;
+}
+
+// ──────────────────────────────────────────────────────────
+// Covariance table
+// ──────────────────────────────────────────────────────────
+function buildCovTable() {
+  const tbody = document.querySelector('#cov-table tbody');
+  for (let i = 0; i < 5; i++) {
+    let row = `<tr><td><strong>${ETFs[i]}</strong></td>`;
+    for (let j = 0; j < 5; j++) {
+      row += `<td>${S_gbm1[i][j].toFixed(5)}</td>`;
+    }
+    row += '</tr>';
+    tbody.innerHTML += row;
+  }
+}
+
+// ──────────────────────────────────────────────────────────
+// Simplified optimizer (quadratic penalty approximation)
+// For the frontier, we sweep lambda and compute the optimal
+// weights using a simplified approach: for each lambda, solve
+// min_w  lambda*T * (w-w*)' Sigma (w-w*) + taxCost(w)
+// where taxCost approximates selling lots to move from w0 to w.
+// ──────────────────────────────────────────────────────────
+
+function matVecMul(M, v) {
+  return M.map(row => row.reduce((s, m, j) => s + m * v[j], 0));
+}
+function dot(a, b) { return a.reduce((s, ai, i) => s + ai * b[i], 0); }
+
+// Compute tracking error variance for weights w
+function trackingVar(w) {
+  const diff = w.map((wi, i) => wi - wStar[i]);
+  return dot(diff, matVecMul(S_gbm1, diff));
+}
+
+// Approximate tax cost of moving from w0 to w
+// Simplified: selling reduces positions; we sell cheapest-tax lots first
+function taxCost(w, tauST, tauLT) {
+  let totalTax = 0;
+  for (let i = 0; i < 5; i++) {
+    const sellFrac = Math.max(0, w0[i] - w[i]); // fraction of portfolio to sell
+    if (sellFrac <= 0) continue;
+    const sellDollar = sellFrac * V;
+    
+    // Sell 2018 lots first (short-term but smallest gains), then 2014, then 2010
+    let remaining = sellDollar;
+    
+    // 2018 lot
+    const sell2018 = Math.min(remaining, p2[i]);
+    if (sell2018 > 0) {
+      const gain2018 = sell2018 * Math.max(0, x2[i]);
+      totalTax += tauST * gain2018;
+      remaining -= sell2018;
+    }
+    // 2014 lot
+    const sell2014 = Math.min(remaining, p1[i]);
+    if (sell2014 > 0) {
+      const gain2014 = sell2014 * Math.max(0, x1[i]);
+      totalTax += tauLT * gain2014;
+      remaining -= sell2014;
+    }
+    // 2010 lot
+    const sell2010 = Math.min(remaining, p0[i]);
+    if (sell2010 > 0) {
+      const gain2010 = sell2010 * Math.max(0, x0[i]);
+      totalTax += tauLT * gain2010;
+    }
+  }
+  return totalTax;
+}
+
+// Simple gradient descent to find optimal weights
+function optimizeWeights(lambda, T, tauST, tauLT) {
+  // Start from current weights
+  let w = [...w0];
+  const lr = 0.0002;
+  const eps = 1e-6;
+  
+  for (let iter = 0; iter < 2000; iter++) {
+    // Gradient of tracking error term
+    const diff = w.map((wi, i) => wi - wStar[i]);
+    const Sd = matVecMul(S_gbm1, diff);
+    const gradTE = Sd.map(s => 2 * lambda * T * s);
+    
+    // Numerical gradient of tax cost
+    const gradTax = w.map((_, i) => {
+      const wPlus = [...w]; wPlus[i] += eps;
+      const wMinus = [...w]; wMinus[i] -= eps;
+      return (taxCost(wPlus, tauST, tauLT) - taxCost(wMinus, tauST, tauLT)) / (2 * eps * V);
+    });
+    
+    // Combined gradient
+    const grad = gradTE.map((g, i) => g + gradTax[i]);
+    
+    // Gradient step
+    w = w.map((wi, i) => wi - lr * grad[i]);
+    
+    // Project onto simplex (non-negative, sum to 1)
+    w = w.map(wi => Math.max(0, wi));
+    const sum = w.reduce((a, b) => a + b, 0);
+    w = w.map(wi => wi / sum);
+  }
+  
+  return w;
+}
+
+// ──────────────────────────────────────────────────────────
+// Frontier plot
+// ──────────────────────────────────────────────────────────
+function updateFrontier() {
+  const T = parseInt(document.getElementById('horizon').value);
+  const tauST = parseInt(document.getElementById('tau-st').value) / 100;
+  const tauLT = parseInt(document.getElementById('tau-lt').value) / 100;
+  
+  document.getElementById('horizon-val').textContent = T;
+  document.getElementById('tau-st-val').textContent = (tauST * 100).toFixed(0);
+  document.getElementById('tau-lt-val').textContent = (tauLT * 100).toFixed(0);
+  
+  const lambdas = [0, 0.1, 0.3, 0.5, 1, 2, 3, 5, 8, 12, 18, 25, 40, 60, 100];
+  const teVals = [];
+  const taxVals = [];
+  const labels = [];
+  
+  for (const lam of lambdas) {
+    const w = optimizeWeights(lam, T, tauST, tauLT);
+    const te = trackingVar(w);
+    const tc = taxCost(w, tauST, tauLT);
+    teVals.push(te * 10000); // in basis points squared
+    taxVals.push(tc);
+    labels.push(`λ=${lam}`);
+  }
+  
+  Plotly.newPlot('frontier-plot', [{
+    x: teVals,
+    y: taxVals,
+    mode: 'lines+markers',
+    type: 'scatter',
+    text: labels,
+    hovertemplate: '%{text}<br>Tracking Error Var: %{x:.1f} bps²<br>Tax Cost: $%{y:,.0f}<extra></extra>',
+    marker: { size: 8, color: '#0b57d0' },
+    line: { color: '#0b57d0', width: 2 }
+  }], {
+    xaxis: { title: 'Tracking Error Variance (bps²)', zeroline: true },
+    yaxis: { title: 'Tax Cost ($)', zeroline: true },
+    margin: { t: 20, r: 30, b: 50, l: 70 },
+    font: { family: 'Georgia, serif' },
+    plot_bgcolor: '#fff',
+    paper_bgcolor: '#fff'
+  }, { responsive: true });
+}
+
+// ──────────────────────────────────────────────────────────
+// Weights bar chart
+// ──────────────────────────────────────────────────────────
+function updateWeights() {
+  const lambdaRaw = parseInt(document.getElementById('lambda-slider').value);
+  const lambda = lambdaRaw / 10;
+  document.getElementById('lambda-val').textContent = lambda.toFixed(1);
+  
+  const T = parseInt(document.getElementById('horizon').value);
+  const tauST = parseInt(document.getElementById('tau-st').value) / 100;
+  const tauLT = parseInt(document.getElementById('tau-lt').value) / 100;
+  
+  const w = optimizeWeights(lambda, T, tauST, tauLT);
+  const te = trackingVar(w);
+  const tc = taxCost(w, tauST, tauLT);
+  
+  Plotly.newPlot('weights-plot', [
+    {
+      x: ETFs,
+      y: w0.map(v => v * 100),
+      name: 'Current',
+      type: 'bar',
+      marker: { color: '#bbb' }
+    },
+    {
+      x: ETFs,
+      y: wStar.map(v => v * 100),
+      name: 'Target (20%)',
+      type: 'bar',
+      marker: { color: '#0b57d0', opacity: 0.3 }
+    },
+    {
+      x: ETFs,
+      y: w.map(v => v * 100),
+      name: 'Optimal',
+      type: 'bar',
+      marker: { color: '#0b57d0' }
+    }
+  ], {
+    barmode: 'group',
+    yaxis: { title: 'Weight (%)', range: [0, 35] },
+    margin: { t: 20, r: 30, b: 40, l: 50 },
+    font: { family: 'Georgia, serif' },
+    legend: { orientation: 'h', y: 1.12 },
+    plot_bgcolor: '#fff',
+    paper_bgcolor: '#fff'
+  }, { responsive: true });
+  
+  document.getElementById('summary-stats').innerHTML = `
+    <p class="small">
+      <strong>Tracking error variance:</strong> ${(te * 10000).toFixed(1)} bps² &nbsp;|&nbsp;
+      <strong>Tax cost:</strong> $${tc.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')} &nbsp;|&nbsp;
+      <strong>Weights:</strong> ${ETFs.map((e, i) => `${e}: ${(w[i]*100).toFixed(1)}%`).join(', ')}
+    </p>
+  `;
+}
+
+// ──────────────────────────────────────────────────────────
+// Event listeners
+// ──────────────────────────────────────────────────────────
+document.getElementById('horizon').addEventListener('input', () => { updateFrontier(); updateWeights(); });
+document.getElementById('tau-st').addEventListener('input', () => { updateFrontier(); updateWeights(); });
+document.getElementById('tau-lt').addEventListener('input', () => { updateFrontier(); updateWeights(); });
+document.getElementById('lambda-slider').addEventListener('input', updateWeights);
+
+// Init
+buildLotTable();
+buildCovTable();
+updateFrontier();
+updateWeights();
+</script>
+
+</body>
+</html>
