@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Shannon Entropy? — Aubrey Clark</title>
+    <style>
+        body { line-height: 1.6; font-size: 16px; padding: 0 10px; margin: 50px auto; max-width: 700px; color: #333; }
+        h1 { font-size: 1.6em; }
+        h2 { font-size: 1.2em; margin-top: 2em; }
+        .meta { color: #666; font-size: 14px; }
+        .result { background: #f7f7f7; border-left: 3px solid #333; padding: 12px 16px; margin: 1.5em 0; }
+        .math { font-style: italic; }
+    </style>
+    <script>
+    window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']] } };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+</head>
+<body>
+
+<p><a href="/">Aubrey Clark</a></p>
+
+<h1>Why Shannon Entropy Is the Unique Cost of Information</h1>
+<p class="meta">From <a href="/thesis.pdf">Principal-Agent Problems and Experimentation</a> (Harvard, 2017), Chapter 1.</p>
+
+<h2>Setup</h2>
+
+<p>A principal hires an agent to acquire information about an unknown state $\theta \in \Theta$ and take a decision $d \in D$. The agent chooses an <em>experiment</em>&mdash;a joint distribution $p(d, \theta)$ over decisions and states&mdash;subject to a cost function $c(p)$ and a capacity constraint.</p>
+
+<p>The contract $b(d, \theta)$ specifies payments from principal to agent. Both parties are risk-neutral. The question is: what form does the optimal contract take, and how does it depend on the cost function?</p>
+
+<h2>The general result</h2>
+
+<p>For a general cost function, every Pareto optimal contract can be written as:</p>
+
+$$b(d, \theta) = \alpha^* y(d, \theta) - \beta(\theta) - \gamma(d, \theta)$$
+
+<p>where:</p>
+<ul>
+    <li>$\alpha^* \in [0,1]$ is a <strong>piece rate</strong> (fraction of output)</li>
+    <li>$\beta(\theta)$ is a <strong>state-dependent transfer</strong> (indexing)</li>
+    <li>$\gamma(d, \theta)$ is a <strong>distortion term</strong> that depends on the cost function</li>
+</ul>
+
+<p>The distortion $\gamma$ captures how complementarities in the cost of acquiring different signals in different states shape incentives. For a general cost function, $\gamma$ depends on both the decision $d$ and the state $\theta$.</p>
+
+<h2>The Shannon entropy result</h2>
+
+<p>Suppose the agent's cost function is expected reduction in Shannon entropy:</p>
+
+$$c(p) = H_S(\pi) - \sum_{d \in D} p(d)\, H_S(p(\cdot | d))$$
+
+<p>where $H_S(q) = -\sum_{\theta} q(\theta) \log q(\theta)$ is Shannon entropy and $\pi$ is the prior.</p>
+
+<p>Then the distortion term simplifies dramatically. It no longer depends on the state:</p>
+
+$$\gamma(d, \theta) \;\longrightarrow\; \hat{\gamma}(d) = \sum_{\bar\theta} \frac{\lambda[d, \bar\theta]}{p(d)}$$
+
+<p>The optimal contract becomes:</p>
+
+<div class="result">
+<strong>Optimal contract under Shannon entropy costs:</strong>
+<ul>
+    <li><strong>Decision penalty/reward:</strong> $\hat{\gamma}(d) = \sum_{\bar\theta} \frac{\lambda[d, \bar\theta]}{p(d)}$</li>
+    <li><strong>Indexed output:</strong> $y^I = y - \beta / \alpha^*$ where $\beta(\theta) = \min\{\alpha^* y(d, \theta) - \hat{\gamma}(d) : d \in D\}$</li>
+    <li><strong>Piece rate:</strong> $\alpha^* \in [0,1]$</li>
+</ul>
+</div>
+
+<p>The decision-dependent transfer $\hat{\gamma}(d)$ punishes decisions likely to make the agent's liability limits bind and rewards decisions likely to make the principal's liability limits bind.</p>
+
+<h2>The uniqueness theorem</h2>
+
+<p>This is the key result. Start from the general distortion term $\gamma(d, \theta)$. For it to collapse to a <em>decision-dependent</em> transfer $\hat{\gamma}(d)$ (independent of $\theta$), the information cost matrix must take the form:</p>
+
+$$k(\theta, \theta', p(\cdot|d)) = p(\theta|d)\, g(\theta', p(\cdot|d)) + \mathbf{1}_{\{\theta' = \theta\}}\, h(\theta, p(\cdot|d))$$
+
+<div class="result">
+<strong>Uniqueness:</strong> Using the symmetry of the information cost matrix and the constraint that its rows sum to zero, one can show that the cost function is <em>necessarily proportional to expected reduction in Shannon entropy</em>.
+</div>
+
+<p>In other words: Shannon entropy is not just <em>a</em> convenient cost function for information acquisition. It is the <em>only</em> cost function that produces the clean contract form above. Any other cost function introduces state-dependent distortions that complicate the optimal contract.</p>
+
+<h2>Why this matters</h2>
+
+<p>Shannon entropy is ubiquitous in information theory, statistical mechanics, and models of rational inattention (Sims, 2003). But its use is often justified by tractability or tradition. This result provides a <em>structural</em> justification: Shannon entropy is the unique cost function under which optimal incentive contracts take an intuitive, implementable form.</p>
+
+<p>The result connects information theory to mechanism design: the mathematical structure that makes Shannon entropy special in coding theory (it is the unique measure satisfying certain axioms) is the same structure that makes it special in contract design.</p>
+
+<h2>Further reading</h2>
+<ul>
+    <li><a href="/thesis.pdf">Full dissertation (PDF)</a></li>
+    <li><a href="https://arxiv.org/abs/2103.03911">Contracts for Acquiring Information</a> (with G. Reggiani)</li>
+    <li><a href="https://arxiv.org/abs/2412.01760">Capacity Constraints in Principal-Agent Problems</a></li>
+</ul>
+
+</body>
+</html>
